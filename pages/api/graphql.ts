@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { gql, ApolloServer } from 'apollo-server-micro';
+import { gql, ApolloServer } from 'apollo-server-micro'
 
 const prisma = new PrismaClient()
 
@@ -26,51 +26,51 @@ const typeDefs = gql`
 
 const resolvers = {
   Query: {
-    users: async (parent, args, context, info) => {
-      const users = await prisma.user.findMany();
+    users: async () => {
+      const users = await prisma.user.findMany()
 
       return users
     },
     user: async (parent, args) => {
       const user = await prisma.user.findUnique({
         where: {
-          id: args.id
-        }
+          id: args.id,
+        },
       })
 
       return user
-    }
+    },
   },
   User: {
     async scores(parent) {
       const scores = prisma.score.findMany({
         where: {
-          userId: parent.id
-        }
+          userId: parent.id,
+        },
       })
 
       return scores
-    }
-  }
+    },
+  },
 }
 
 const apolloServer = new ApolloServer({
   typeDefs,
-  resolvers
+  resolvers,
 })
 
-const startServer = apolloServer.start();
+const startServer = apolloServer.start()
 
 export default async function handler(req, res) {
-  await startServer;
+  await startServer
 
   await apolloServer.createHandler({
-    path: "/api/graphql",
-  })(req, res);
+    path: '/api/graphql',
+  })(req, res)
 }
 
 export const config = {
   api: {
     bodyParser: false,
   },
-};
+}

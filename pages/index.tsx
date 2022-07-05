@@ -12,7 +12,7 @@ const client = new ApolloClient({
   cache: new InMemoryCache(),
 })
 
-export async function getServerSideProps(context) {
+export async function getServerSideProps() {
   const query = await client.query({
     query: USER_QUERY,
   })
