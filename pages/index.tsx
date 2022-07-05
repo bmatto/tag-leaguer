@@ -3,10 +3,12 @@ import { ApolloClient, createHttpLink, InMemoryCache } from '@apollo/client'
 
 import USER_QUERY from '../graphql/queries/users.graphql'
 
+console.log(process.env.BASE_URL)
+
 const client = new ApolloClient({
   ssrMode: true,
   link: createHttpLink({
-    uri: 'http://localhost:3000/api/graphql',
+    uri: `${process.env.BASE_URL}/api/graphql`,
     credentials: 'same-origin',
   }),
   cache: new InMemoryCache(),
