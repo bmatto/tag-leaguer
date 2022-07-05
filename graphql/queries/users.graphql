@@ -1,0 +1,13 @@
+query GetUsers {
+  users {
+    id
+    firstname
+    lastname
+    email
+    scores {
+      id
+      strokes
+      date
+    }
+  }
+}

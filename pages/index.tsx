@@ -1,23 +1,70 @@
 import Head from 'next/head'
+import { ApolloClient, createHttpLink, InMemoryCache } from '@apollo/client'
 
-export default function Home() {
+import USER_QUERY from '../graphql/queries/users.graphql'
+
+const client = new ApolloClient({
+  ssrMode: true,
+  link: createHttpLink({
+    uri: 'http://localhost:3000/api/graphql',
+    credentials: 'same-origin',
+  }),
+  cache: new InMemoryCache(),
+})
+
+export async function getServerSideProps(context) {
+  const query = await client.query({
+    query: USER_QUERY,
+  })
+
+  const {
+    data: { users },
+  } = query
+
+  return {
+    props: {
+      users,
+    },
+  }
+}
+
+export default function Home({ users }) {
   return (
     <div className="container">
       <Head>
-        <title>Create Next App</title>
+        <title>Bellamy Tag League</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <main>
-        <h1 className="title">
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
+        <h1 className="title">Bellamy Tag League</h1>
 
-        <p className="description">
-          Get started by editing <code>pages/index.js</code>
-        </p>
+        <p className="description">For League Runners</p>
 
         <div className="grid">
+          {users.map((user) => {
+            return (
+              <div key={user.email} className="card">
+                <h3>
+                  {user.firstname} {user.lastname}
+                </h3>
+                <p>{user.email}</p>
+                {user.scores.map((score) => {
+                  return (
+                    <dl key={score.id}>
+                      <dt>Date</dt>
+                      <dd>
+                        {new Date(Number(parseInt(score.date))).toDateString()}
+                      </dd>
+                      <dt>Strokes</dt>
+                      <dd>{score.strokes}</dd>
+                    </dl>
+                  )
+                })}
+              </div>
+            )
+          })}
+
           <a href="https://nextjs.org/docs" className="card">
             <h3>Documentation &rarr;</h3>
             <p>Find in-depth information about Next.js features and API.</p>
@@ -54,8 +101,7 @@ export default function Home() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel" className="logo" />
+          Powered by <img src="/vercel.svg" alt="Vercel" className="logo" />
         </a>
       </footer>
 
