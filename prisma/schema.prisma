@@ -11,55 +11,53 @@ datasource db {
 }
 
 model Score {
-  id      Int      @id @default(autoincrement())
-  strokes Int
-  User    User     @relation(fields: [userId], references: [id])
-  userId  Int
-  date    DateTime
+  id        Int      @id @default(autoincrement())
+  strokes   Int
+  date      DateTime
+  earnedTag Int?
+
+  User   User @relation(fields: [userId], references: [id])
+  userId Int
+
+  Event   Event? @relation(fields: [eventId], references: [id])
+  eventId Int?
+
+  @@unique([userId, eventId])
 }
 
 model User {
-  id        Int     @id @default(autoincrement())
-  email     String  @unique
+  id        Int    @id @default(autoincrement())
+  email     String @unique
   firstname String
   lastname  String
-  scores    Score[]
+
+  scores Score[]
+  events EventsOnUsers[]
 }
 
-// model Hole {
-//   id       Int    @id @default(autoincrement())
-//   course   Course @relation(fields: [courseId], references: [id])
-//   courseId Int    @unique
-// }
+model Event {
+  id    Int      @id @default(autoincrement())
+  title String   @db.VarChar(255)
+  date  DateTime @default(now())
 
-// model Course {
-//   id    Int    @id @default(autoincrement())
-//   title String @db.VarChar(255)
-//   holes Hole[]
-// }
+  Course   Course @relation(fields: [courseId], references: [id])
+  courseId Int
 
-// model Post {
-//   id        Int      @id @default(autoincrement())
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-//   title     String   @db.VarChar(255)
-//   content   String?
-//   published Boolean  @default(false)
-//   author    User     @relation(fields: [authorId], references: [id])
-//   authorId  Int
-// }
+  scores Score[]
+  users  EventsOnUsers[]
+}
 
-// model Profile {
-//   id     Int     @id @default(autoincrement())
-//   bio    String?
-//   user   User    @relation(fields: [userId], references: [id])
-//   userId Int     @unique
-// }
+model EventsOnUsers {
+  User    User  @relation(fields: [userId], references: [id])
+  userId  Int
+  Event   Event @relation(fields: [eventId], references: [id])
+  eventId Int
 
-// model User {
-//   id      Int      @id @default(autoincrement())
-//   email   String   @unique
-//   name    String?
-//   posts   Post[]
-//   profile Profile?
-// }
+  @@id([userId, eventId])
+}
+
+model Course {
+  id    Int     @id @default(autoincrement())
+  name  String  @db.VarChar(255)
+  Event Event[]
+}

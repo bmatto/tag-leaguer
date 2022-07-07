@@ -1,0 +1,10 @@
+query GetEvents {
+  events {
+    id
+    title
+    course {
+      id
+      name
+    }
+  }
+}

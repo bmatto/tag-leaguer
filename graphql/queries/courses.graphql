@@ -1,0 +1,6 @@
+query GetCourses {
+  courses {
+    id
+    name
+  }
+}

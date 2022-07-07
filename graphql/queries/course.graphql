@@ -1,0 +1,11 @@
+query GetCourse($courseId: Int!) {
+  course(courseId: $courseId) {
+    id
+    name
+    events {
+      id
+      title
+      date
+    }
+  }
+}

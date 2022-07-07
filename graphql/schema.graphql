@@ -1,0 +1,43 @@
+type Query {
+  users: [User!]!
+  user(userId: Int!): User
+  events: [Event!]
+  event(eventId: Int!): Event
+  courses: [Course!]
+  course(courseId: Int!): Course
+  scores: [Score!]
+}
+
+type Score {
+  id: Int
+  strokes: Int
+  earnedTag: Int
+  date: String
+  user: User!
+  event: Event!
+}
+
+type User {
+  id: Int
+  firstname: String
+  lastname: String
+  email: String
+  scores: [Score!]
+  events: [Event!]
+  eventScore: Score
+}
+
+type Event {
+  id: Int
+  date: String
+  title: String
+  course: Course
+  scores: [Score!]
+  users: [User!]
+}
+
+type Course {
+  id: Int
+  name: String
+  events: [Event!]
+}
