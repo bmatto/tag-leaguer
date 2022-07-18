@@ -228,12 +228,19 @@ const resolvers = {
 
       const courseId = parent.event.courseId
 
+      // Find the most recent tag for this user from an event on this course before todays event
       const tag = await prisma.score
         .findFirst({
+          orderBy: {
+            date: 'desc',
+          },
           where: {
             userId: parent.id,
             Event: {
               courseId: courseId,
+              date: {
+                lt: parent.event.date,
+              },
             },
           },
         })
