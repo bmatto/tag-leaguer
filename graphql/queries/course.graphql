@@ -1,4 +1,4 @@
-query GetCourse($courseId: Int!) {
+query GetCourse($courseId: ID!) {
   course(courseId: $courseId) {
     id
     name

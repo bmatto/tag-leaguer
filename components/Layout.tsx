@@ -1,27 +1,31 @@
 import Link from 'next/link'
 import Head from 'next/head'
+import Container from '@mui/material/Container'
+import CssBaseline from '@mui/material/CssBaseline'
 
 export default function Layout({ children }) {
   return (
-    <div className="container">
-      <Head>
-        <title>Bellamy Tag League</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+    <>
+      <CssBaseline />
+      <Container maxWidth="sm">
+        <Head>
+          <title>Bellamy Tag League</title>
+          <link rel="icon" href="/favicon.ico" />
+        </Head>
 
-      <main>
-        <header>
-          <Link href="/">
-            <a>
-              <h1 className="title">Leaguer</h1>
-              <p className="description">For League Runners</p>
-            </a>
-          </Link>
-        </header>
-        {children}
-      </main>
+        <main>
+          <header>
+            <Link href="/">
+              <a>
+                <h1 className="title">Leaguer</h1>
+              </a>
+            </Link>
+            <p className="description">For League Runners</p>
+          </header>
+          {children}
+        </main>
 
-      <style jsx global>{`
+        {/* <style jsx global>{`
         html,
         body {
           padding: 0;
@@ -163,7 +167,8 @@ export default function Layout({ children }) {
             flex-direction: column;
           }
         }
-      `}</style>
-    </div>
+      `}</style> */}
+      </Container>
+    </>
   )
 }

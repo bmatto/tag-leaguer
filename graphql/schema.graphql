@@ -1,34 +1,65 @@
 type Query {
   users: [User!]!
-  user(userId: Int!): User
+  user(userId: ID!): User
+  searchUsers(term: String): [User!]
   events: [Event!]
-  event(eventId: Int!): Event
+  event(eventId: ID!): Event
   courses: [Course!]
-  course(courseId: Int!): Course
+  course(courseId: ID!): Course
   scores: [Score!]
+  tags: [Tag!]
+  tag(tagId: ID!): Tag
+}
+
+type Mutation {
+  addEvent(input: EventInput!): Event
+  deleteEvent(eventId: ID!): Event
+  addUsersToEvent(input: UsersEventInput!): User
+  createNewUser(input: CreateNewUserInput!): User
+  removeUserFromEvent(userId: ID!, eventId: ID!): Boolean
+}
+
+input EventInput {
+  courseId: ID!
+  title: String!
+  date: String
+}
+
+input UsersEventInput {
+  userIds: [ID!]
+  eventId: ID!
+}
+
+input CreateNewUserInput {
+  firstname: String!
+  lastname: String!
+  email: String
+  eventId: ID
 }
 
 type Score {
-  id: Int
+  id: ID
   strokes: Int
-  earnedTag: Int
+  tag: Tag
   date: String
   user: User!
   event: Event!
 }
 
 type User {
-  id: Int
+  id: ID
   firstname: String
   lastname: String
   email: String
   scores: [Score!]
   events: [Event!]
+
   eventScore: Score
+  lastEventTag: Tag
 }
 
 type Event {
-  id: Int
+  id: ID
   date: String
   title: String
   course: Course
@@ -37,7 +68,15 @@ type Event {
 }
 
 type Course {
-  id: Int
+  id: ID
   name: String
   events: [Event!]
+}
+
+type Tag {
+  id: ID
+  number: Int
+  course: Course
+  user: User
+  scores: [Score!]
 }

@@ -11,10 +11,10 @@ datasource db {
 }
 
 model Score {
-  id        Int      @id @default(autoincrement())
-  strokes   Int
-  date      DateTime
-  earnedTag Int?
+  id      Int      @id @default(autoincrement())
+  strokes Int
+  date    DateTime
+  tag     Tag?     @relation(fields: [tagId], references: [id])
 
   User   User @relation(fields: [userId], references: [id])
   userId Int
@@ -22,17 +22,19 @@ model Score {
   Event   Event? @relation(fields: [eventId], references: [id])
   eventId Int?
 
+  tagId Int?
   @@unique([userId, eventId])
 }
 
 model User {
-  id        Int    @id @default(autoincrement())
-  email     String @unique
+  id        Int     @id @default(autoincrement())
+  email     String? @unique
   firstname String
   lastname  String
 
   scores Score[]
   events EventsOnUsers[]
+  tags   Tag[]
 }
 
 model Event {
@@ -60,4 +62,15 @@ model Course {
   id    Int     @id @default(autoincrement())
   name  String  @db.VarChar(255)
   Event Event[]
+  tags  Tag[]
+}
+
+model Tag {
+  id       Int     @id @default(autoincrement())
+  number   Int
+  Course   Course? @relation(fields: [courseId], references: [id])
+  courseId Int?
+  User     User?   @relation(fields: [userId], references: [id])
+  userId   Int?
+  Score    Score[]
 }

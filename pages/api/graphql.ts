@@ -7,11 +7,97 @@ declare global {
   const prisma: PrismaClient | undefined
 }
 
-const prisma = global.prisma || new PrismaClient()
+const prisma: PrismaClient = global.prisma || new PrismaClient()
 
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma
 
 const resolvers = {
+  Mutation: {
+    deleteEvent: async (root, args) => {
+      const { eventId } = args
+
+      const deletedEvent = await prisma.event.delete({
+        where: {
+          id: parseInt(eventId),
+        },
+      })
+
+      return deletedEvent
+    },
+    addEvent: async (root, args) => {
+      const { input } = args
+
+      const date = input.date ? new Date(input.date) : undefined
+
+      const newEvent = await prisma.event.create({
+        data: {
+          ...input,
+          ...(date ? { date } : {}),
+        },
+      })
+
+      return newEvent
+    },
+    addUsersToEvent: async (root, args) => {
+      const { input } = args
+
+      const result = await prisma.eventsOnUsers.createMany({
+        data: input.userIds.map((userId) => ({
+          eventId: parseInt(input.eventId),
+          userId: parseInt(userId),
+        })),
+      })
+
+      return result
+    },
+    createNewUser: async (root, args) => {
+      const {
+        input: { eventId, email, ...newUser },
+      } = args
+
+      const data = {
+        ...newUser,
+      }
+
+      if (email) {
+        data.email = email
+      }
+
+      if (eventId) {
+        data.events = {
+          create: [
+            {
+              Event: {
+                connect: {
+                  id: parseInt(eventId),
+                },
+              },
+            },
+          ],
+        }
+      }
+
+      const user = await prisma.user.create({
+        data,
+      })
+
+      return user
+    },
+    removeUserFromEvent: async (root, args) => {
+      const { userId, eventId } = args
+
+      const result = await prisma.eventsOnUsers.delete({
+        where: {
+          userId_eventId: {
+            userId: parseInt(userId),
+            eventId: parseInt(eventId),
+          },
+        },
+      })
+
+      return Boolean(result)
+    },
+  },
   Query: {
     users: async () => {
       const users = await prisma.user.findMany()
@@ -21,11 +107,25 @@ const resolvers = {
     user: async (_parent, args) => {
       const user = await prisma.user.findUnique({
         where: {
-          id: args.userId,
+          id: parseInt(args.userId),
         },
       })
 
       return user
+    },
+    searchUsers: async (_parent, args) => {
+      const { term } = args
+
+      const users = await prisma.user.findMany({
+        where: {
+          OR: [
+            { firstname: { contains: term, mode: 'insensitive' } },
+            { lastname: { contains: term, mode: 'insensitive' } },
+          ],
+        },
+      })
+
+      return users
     },
     events: async () => {
       const events = await prisma.event.findMany()
@@ -35,7 +135,7 @@ const resolvers = {
     event: async (_parent, args) => {
       const event = await prisma.event.findUnique({
         where: {
-          id: args.eventId,
+          id: parseInt(args.eventId),
         },
       })
 
@@ -49,7 +149,7 @@ const resolvers = {
     course: async (_parent, args) => {
       const course = await prisma.course.findUnique({
         where: {
-          id: args.courseId,
+          id: parseInt(args.courseId),
         },
       })
 
@@ -59,6 +159,20 @@ const resolvers = {
       const scores = await prisma.score.findMany()
 
       return scores
+    },
+    tags: async () => {
+      const tags = await prisma.tag.findMany()
+
+      return tags
+    },
+    tag: async (_parent, args) => {
+      const tag = await prisma.tag.findUnique({
+        where: {
+          id: parseInt(args.tagId),
+        },
+      })
+
+      return tag
     },
   },
   Course: {
@@ -95,7 +209,7 @@ const resolvers = {
       const users = await prisma.user.findMany({
         where: {
           events: {
-            every: {
+            some: {
               eventId: parent.id,
             },
           },
@@ -103,21 +217,44 @@ const resolvers = {
       })
 
       // Provide users within an event the event id
-      return users.map((user) => ({ ...user, eventId: parent.id }))
+      return users.map((user) => ({ ...user, event: parent }))
     },
   },
   User: {
+    async lastEventTag(parent) {
+      if (!parent.event) {
+        throw new Error('Cannot get lastEventTag without event context')
+      }
+
+      const courseId = parent.event.courseId
+
+      const tag = await prisma.score
+        .findFirst({
+          where: {
+            userId: parent.id,
+            Event: {
+              courseId: courseId,
+            },
+          },
+        })
+        .tag()
+
+      return tag
+    },
+
     // bit of a hack to go event -> users -> eventScore
     async eventScore(parent) {
-      if (!parent.eventId) {
+      if (!parent.event) {
         throw new Error('Cannot get event score without event context')
       }
+
+      const { id: eventId } = parent.event
 
       const score = await prisma.score.findUnique({
         where: {
           userId_eventId: {
             userId: parent.id,
-            eventId: parent.eventId,
+            eventId: eventId,
           },
         },
       })
@@ -137,7 +274,7 @@ const resolvers = {
       const events = await prisma.event.findMany({
         where: {
           users: {
-            every: {
+            some: {
               userId: parent.id,
             },
           },
@@ -165,6 +302,17 @@ const resolvers = {
       })
 
       return event
+    },
+  },
+  Tag: {
+    async course(parent) {
+      const course = await prisma.course.findUnique({
+        where: {
+          id: parent.courseId,
+        },
+      })
+
+      return course
     },
   },
 }

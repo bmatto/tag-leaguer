@@ -1,13 +1,23 @@
-query GetCourse($eventId: Int!) {
+query GetEvent($eventId: ID!) {
   event(eventId: $eventId) {
     id
     title
-    scores {
+    date
+    course {
       id
-      strokes
-      user {
-        firstname
-        lastname
+      name
+    }
+    users {
+      id
+      firstname
+      lastname
+      eventScore {
+        id
+        strokes
+      }
+      lastEventTag {
+        id
+        number
       }
     }
   }
