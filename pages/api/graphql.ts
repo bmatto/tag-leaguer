@@ -3,14 +3,8 @@ import { ApolloServer } from 'apollo-server-micro'
 
 import typeDefs from '../../graphql/schema.graphql'
 
-declare global {
-  const prisma: PrismaClient | undefined
-}
-
-// @ts-ignore
 const prisma: PrismaClient = global.prisma || new PrismaClient() // ts-ingnore
 
-// @ts-ignore
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma
 
 const resolvers = {
