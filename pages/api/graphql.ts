@@ -7,8 +7,10 @@ declare global {
   const prisma: PrismaClient | undefined
 }
 
-const prisma: PrismaClient = global.prisma || new PrismaClient()
+// @ts-ignore
+const prisma: PrismaClient = global.prisma || new PrismaClient() // ts-ingnore
 
+// @ts-ignore
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma
 
 const resolvers = {
