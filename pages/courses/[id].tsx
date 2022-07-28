@@ -125,7 +125,7 @@ function CreateNewEvent({ courseId, onSubmit, onCancel }) {
 }
 
 export default function Course({ course }) {
-  const { loading, error, data } = useQuery(COURSE_QUERY, {
+  const { loading, data } = useQuery(COURSE_QUERY, {
     variables: {
       courseId: parseInt(course.id),
     },
