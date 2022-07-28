@@ -13,7 +13,7 @@ export const serverClient = new ApolloClient({
 
 export const browserClient = new ApolloClient({
   link: createHttpLink({
-    uri: `/api/graphql`,
+    uri: '/api/graphql',
     credentials: 'same-origin',
   }),
   cache: new InMemoryCache(),

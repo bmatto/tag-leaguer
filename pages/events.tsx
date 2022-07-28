@@ -5,6 +5,8 @@ import Layout from '../components/Layout'
 
 import EVENTS_QUERY from '../graphql/queries/events.graphql'
 import { serverClient } from '../graphql/client'
+import Box from '@mui/material/Box'
+import Stack from '@mui/material/Stack'
 
 export async function getServerSideProps() {
   const query = await serverClient.query({
@@ -31,15 +33,20 @@ export default function Events({ events }) {
       </Head>
       <main>
         <h1>Events</h1>
-        {events.map((event) => {
-          return (
-            <Link key={`event-${event.id}`} href={`/events/${event.id}`}>
-              <a>
-                {event.title} at {event.course.name}
-              </a>
-            </Link>
-          )
-        })}
+        <Stack spacing={3}>
+          {events.map((event) => {
+            return (
+              <Box key={`event-${event.id}`}>
+                <Link href={`/events/${event.id}`}>
+                  <a>
+                    {event.title} at {event.course.name}
+                  </a>
+                </Link>
+              </Box>
+            )
+          })}
+        </Stack>
+        <Box></Box>
       </main>
     </Layout>
   )

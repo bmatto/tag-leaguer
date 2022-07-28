@@ -17,6 +17,8 @@ type Mutation {
   addUsersToEvent(input: UsersEventInput!): User
   createNewUser(input: CreateNewUserInput!): User
   removeUserFromEvent(userId: ID!, eventId: ID!): Boolean
+  updateScore(input: UpdateScoreInput!): Score
+  updateCurrentTag(input: UpdateCurrentTagInput!): Tag
 }
 
 input EventInput {
@@ -35,6 +37,20 @@ input CreateNewUserInput {
   lastname: String!
   email: String
   eventId: ID
+}
+
+input UpdateScoreInput {
+  userId: ID!
+  eventId: ID!
+  strokes: Int!
+  date: String!
+}
+
+input UpdateCurrentTagInput {
+  userId: ID!
+  courseId: ID!
+  number: Int!
+  scoreId: ID
 }
 
 type Score {
@@ -56,6 +72,7 @@ type User {
 
   eventScore: Score
   lastEventTag: Tag
+  currentCourseTag: Tag
 }
 
 type Event {

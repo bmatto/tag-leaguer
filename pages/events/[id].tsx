@@ -1,20 +1,17 @@
-import { useMutation, useLazyQuery, gql } from '@apollo/client'
-import { useRouter } from 'next/router'
-import { useEffect, useMemo, useState, useRef } from 'react'
-import Autocomplete from '@mui/material/Autocomplete'
+import { useMutation, useQuery, gql } from '@apollo/client'
+import { useEffect, useMemo, useState } from 'react'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Box from '@mui/material/Box'
-import Drawer from '@mui/material/Drawer'
 
 import { debounce } from '@mui/material'
-import { pluck, path } from 'ramda'
+import { sort } from 'ramda'
 
 import EVENT_QUERY from '../../graphql/queries/event.graphql'
-import { serverClient } from '../../graphql/client'
+// import { serverClient } from '../../graphql/client'
 import Layout from '../../components/Layout'
-import CreateNewUser from '../../components/CreateNewUser'
+import UsersAutocomplete from '../../components/UsersAutoComplete'
 
 function Name(props) {
   const { sx, ...other } = props
@@ -29,7 +26,7 @@ function Name(props) {
   )
 }
 
-function Score({ sx, eventScore }) {
+function Score({ sx, eventScore, userId, handleUpdateScore }) {
   const maybeStrokes = eventScore ? eventScore.strokes : ''
   const [strokes, setStrokes] = useState(maybeStrokes)
 
@@ -40,6 +37,7 @@ function Score({ sx, eventScore }) {
       }}
       onChange={(event) => {
         setStrokes(event.target.value)
+        handleUpdateScore(userId, event.target.value)
       }}
       type="number"
       variant="standard"
@@ -49,15 +47,44 @@ function Score({ sx, eventScore }) {
   )
 }
 
-function CurrentTag({ tag }) {
-  const [currentTag, setCurrentTag] = useState((tag && tag.number) || '')
+function LastCourseTag({ tag }) {
+  const [lastTag, setLastTag] = useState((tag && tag.number) || '')
+
+  return (
+    <Box sx={{ width: 40 }}>
+      <TextField
+        variant="standard"
+        value={lastTag}
+        onChange={(event) => setLastTag(event.target.value)}
+      />
+    </Box>
+  )
+}
+
+function CurrentTag({ onCurrentTagChange, user }) {
+  const { currentCourseTag: tag } = user
+  const initialCurrentTag = (tag && parseInt(tag.number)) || ''
+
+  if (user.id === '78') {
+    console.log('tag prop', tag.id, initialCurrentTag)
+  }
+
+  const [currentTag, setCurrentTag] = useState(() => initialCurrentTag)
+  const scoreId = user.eventScore ? user.eventScore.id : undefined
 
   function handleCurrentTagChange(event) {
+    'handle Tag change'
     setCurrentTag(event.target.value)
+    onCurrentTagChange(user.id, event.target.value, scoreId)
+  }
+
+  if (user.id === '78') {
+    console.log(currentTag)
   }
 
   return (
     <TextField
+      disabled={!user.eventScore}
       sx={{ width: 40 }}
       type="number"
       inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
@@ -68,45 +95,44 @@ function CurrentTag({ tag }) {
   )
 }
 
-const SEARCH_USERS = gql`
-  query SearchUsers($term: String) {
-    searchUsers(term: $term) {
-      id
-      email
-      firstname
-      lastname
-    }
-  }
-`
+const splitUsersIntoCards = (users) => {
+  let i = 0
+  const cardUsers = [...users]
+  const cards = [cardUsers.splice(0, 4)]
+  const remainder = cardUsers.length % 3
 
-const DELETE_EVENT_MUTATION = gql`
-  mutation DeleteEvent($eventId: ID!) {
-    deleteEvent(eventId: $eventId) {
-      id
-      title
-    }
-  }
-`
+  while (cardUsers.length > 0) {
+    const potentialRemainingThreeCards = cardUsers.length / 3
+    const totalPotentialCards = potentialRemainingThreeCards + cards.length
 
-const ADD_USERS_TO_EVENT = gql`
-  mutation AddUsersToEvent($UsersEventInput: UsersEventInput!) {
-    addUsersToEvent(input: $UsersEventInput) {
-      firstname
-      lastname
-      id
+    if (i < remainder || totalPotentialCards > 18) {
+      cards.push(cardUsers.splice(0, 4))
+    } else {
+      cards.push(cardUsers.splice(0, 3))
     }
+    i++
   }
-`
 
-const CREATE_NEW_USER = gql`
-  mutation CreateNewUser($CreateNewUserInput: CreateNewUserInput!) {
-    createNewUser(input: $CreateNewUserInput) {
-      firstname
-      lastname
-      id
-    }
-  }
-`
+  return cards
+}
+
+const sortUsers = sort((userA, userB) => {
+  const strokesA = userA.eventScore
+    ? parseInt(userA.eventScore.strokes)
+    : Infinity
+  const strokesB = userB.eventScore
+    ? parseInt(userB.eventScore.strokes)
+    : Infinity
+
+  const lastTagA = userA.lastEventTag
+    ? parseInt(userA.lastEventTag.number)
+    : Infinity
+  const lastTagB = userB.lastEventTag
+    ? parseInt(userB.lastEventTag.number)
+    : Infinity
+
+  return strokesA - strokesB || lastTagA - lastTagB
+})
 
 const REMOVE_USER_FROM_EVENT = gql`
   mutation RemoveUserFromEvent($eventId: ID!, $userId: ID!) {
@@ -114,120 +140,99 @@ const REMOVE_USER_FROM_EVENT = gql`
   }
 `
 
+const UPDATE_SCORE = gql`
+  mutation UpdateScore($UpdateScoreInput: UpdateScoreInput!) {
+    updateScore(input: $UpdateScoreInput) {
+      id
+      strokes
+    }
+  }
+`
+
+const UPDATE_CURRENT_TAG = gql`
+  mutation UpdateCurrentTag($UpdateCurrentTagInput: UpdateCurrentTagInput!) {
+    updateCurrentTag(input: $UpdateCurrentTagInput) {
+      id
+      number
+    }
+  }
+`
+
 export async function getServerSideProps({ params }) {
   const { id: eventId } = params
 
-  let query
+  // let query
 
-  try {
-    query = await serverClient.query({
-      query: EVENT_QUERY,
-      variables: {
-        eventId: eventId,
-      },
-    })
-  } catch (e) {
-    console.log(Object.keys(e))
-    console.log(e.networkError.result)
-    query = {
-      data: {
-        event: {
-          title: 'foo',
-        },
-      },
-    }
-  }
+  // try {
+  //   query = await serverClient.query({
+  //     query: EVENT_QUERY,
+  //     variables: {
+  //       eventId: eventId,
+  //     },
+  //   })
+  // } catch (e) {
+  //   console.log(Object.keys(e))
+  //   console.log(e.networkError.result)
+  //   console.log(e.networkError.message)
+  //   query = {
+  //     data: {
+  //       event: {
+  //         title: 'foo',
+  //         users: [],
+  //         course: {
+  //           name: 'bar',
+  //         },
+  //       },
+  //     },
+  //   }
+  // }
 
-  const {
-    data: { event },
-  } = query
+  // const {
+  //   data: { event },
+  // } = query
 
   return {
     props: {
-      event,
+      event: {
+        id: eventId,
+        title: 'foo',
+        users: [],
+        course: {
+          name: 'bar',
+        },
+      },
     },
   }
 }
 
 export default function Event({ event: initialEvent }) {
   const [event, setEvent] = useState(initialEvent)
-  const [isAddNewUser, setIsAddNewUser] = useState(false)
-  const [options, setOptions] = useState([])
-  const [inputValue, setInputValue] = useState('')
-  const [value, setValue] = useState([])
 
-  const router = useRouter()
+  const [users, setUsers] = useState(sortUsers(event.users))
+  const [cards, setCards] = useState(splitUsersIntoCards(users))
 
-  const eventId = useRef(event.id)
+  useEffect(() => {
+    setCards(splitUsersIntoCards(users))
+  }, [users])
 
-  const [deleteEvent, { loading: loadingDeleteEvent }] = useMutation(
-    DELETE_EVENT_MUTATION
-  )
+  const { loading: eventLoading, data: eventData } = useQuery(EVENT_QUERY, {
+    variables: {
+      eventId: event.id,
+    },
+    fetchPolicy: 'network-only',
+  })
 
-  const [getEventQuery, { loading: eventLoading, data: eventData }] =
-    useLazyQuery(EVENT_QUERY, {
-      fetchPolicy: 'network-only',
-    })
-  const [getUsersQuery, { loading: userLoading, data: userData }] =
-    useLazyQuery(SEARCH_USERS)
-
-  const [
-    removeUserFromEvent,
-    { loading: removeUserFromEventLoading, data: removeUserFromEventData },
-  ] = useMutation(REMOVE_USER_FROM_EVENT)
-  const [addUsersToEvent, { loading: loadingAddUsersToEvent }] =
-    useMutation(ADD_USERS_TO_EVENT)
-  const [
-    createNewUser,
-    { loading: createNewUserLoading, data: createNewUserData },
-  ] = useMutation(CREATE_NEW_USER)
-
-  const getUsers = useMemo(() => {
-    return debounce((term) => {
-      getUsersQuery({
-        variables: {
-          term,
-        },
-      })
-    })
-  }, [getUsersQuery])
-
-  function handleDelete() {
-    deleteEvent({
-      variables: {
-        eventId: event.id,
-      },
-    })
-    if (!loadingDeleteEvent) {
-      router.replace(`/courses/${event.course.id}`)
-    }
+  const eventQuery = {
+    query: EVENT_QUERY,
+    variables: { eventId: event.id },
   }
 
-  function handleAddPlayerClick(usersEventInput) {
-    addUsersToEvent({
-      variables: {
-        UsersEventInput: usersEventInput,
-      },
-    })
-    setValue([])
-  }
+  const [removeUserFromEvent] = useMutation(REMOVE_USER_FROM_EVENT, {
+    refetchQueries: [eventQuery],
+  })
 
-  function handleCreateNewUserSubmit(newUser, event) {
-    event.preventDefault()
-
-    createNewUser({
-      variables: {
-        CreateNewUserInput: newUser,
-      },
-    })
-
-    setIsAddNewUser(false)
-    return false
-  }
-
-  function handleCreateNewPlayer() {
-    setIsAddNewUser(true)
-  }
+  const [updateScore] = useMutation(UPDATE_SCORE)
+  const [updateCurrentTag] = useMutation(UPDATE_CURRENT_TAG)
 
   function handleRemoveUserFromEvent(userId) {
     removeUserFromEvent({
@@ -238,57 +243,42 @@ export default function Event({ event: initialEvent }) {
     })
   }
 
-  useEffect(() => {
-    if (inputValue === '') {
-      setOptions([])
-      return undefined
-    }
+  const handleUpdateScore = useMemo(() => {
+    return debounce((userId, strokes) => {
+      updateScore({
+        variables: {
+          UpdateScoreInput: {
+            userId,
+            strokes: parseInt(strokes),
+            eventId: event.id,
+            date: event.date,
+          },
+        },
+      })
+    }, 1000)
+  }, [updateScore, event])
 
-    getUsers(inputValue)
-  }, [inputValue, getUsers])
+  const handleCurrentTagChange = useMemo(() => {
+    return debounce((userId, tagNumber, scoreId) => {
+      updateCurrentTag({
+        variables: {
+          UpdateCurrentTagInput: {
+            userId,
+            scoreId,
+            courseId: event.course.id,
+            number: parseInt(tagNumber),
+          },
+        },
+      })
+    }, 1000)
+  }, [updateCurrentTag, event])
 
-  // Handle Users Loaded For AutoComplete
-  useEffect(() => {
-    if (!userLoading && userData) {
-      const { searchUsers } = userData
-      const userOptions = searchUsers.map((user) => ({
-        label: `${user.firstname} ${user.lastname}`,
-        id: user.id,
-      }))
-
-      setOptions(userOptions)
-    }
-  }, [userLoading, userData])
-
-  // Handle New Event Loaded
   useEffect(() => {
     if (!eventLoading && eventData) {
       setEvent(eventData.event)
+      setUsers(sortUsers(eventData.event.users))
     }
   }, [eventLoading, eventData])
-
-  // Handle New User Created
-  useEffect(() => {
-    const newUserCreated = !createNewUserLoading && createNewUserData
-    const userRemoved =
-      !removeUserFromEventLoading &&
-      path(['removeUserFromEvent'], removeUserFromEventData) === true
-
-    if (newUserCreated || userRemoved) {
-      console.log('re query for users')
-      getEventQuery({
-        variables: {
-          eventId: eventId.current,
-        },
-      })
-    }
-  }, [
-    createNewUserLoading,
-    createNewUserData,
-    removeUserFromEventLoading,
-    removeUserFromEventData,
-    getEventQuery,
-  ])
 
   return (
     <Layout>
@@ -298,38 +288,11 @@ export default function Event({ event: initialEvent }) {
         </h1>
         <p>{new Date(parseInt(event.date)).toDateString()}</p>
         {/* <button onClick={handleDelete}>Delete Event</button> */}
-        <Autocomplete
-          freeSolo
-          multiple
-          options={options}
-          sx={{ width: 300 }}
-          filterOptions={(x) => x}
-          value={value}
-          onChange={(event, newValue) => {
-            setValue(newValue)
-          }}
-          onInputChange={(event, newValue) => {
-            setInputValue(newValue)
-          }}
-          renderInput={(params) => (
-            <TextField {...params} label="Find Players" fullWidth />
-          )}
+        <UsersAutocomplete
+          eventQuery={eventQuery}
+          eventId={event.id}
+          users={users}
         />
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
-          <Button
-            disabled={value.length === 0}
-            variant="contained"
-            onClick={handleAddPlayerClick.bind(null, {
-              eventId: event.id,
-              userIds: pluck('id', value),
-            })}
-          >
-            Add Players
-          </Button>
-          <Button variant="contained" onClick={handleCreateNewPlayer}>
-            Create New Player
-          </Button>
-        </Box>
 
         <Box
           sx={{
@@ -338,63 +301,76 @@ export default function Event({ event: initialEvent }) {
           }}
         >
           <Stack spacing={3}>
-            {event.users.map((user) => {
-              const { eventScore } = user
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-evenly',
+                alignItems: 'center',
+              }}
+            >
+              <Box sx={{ width: 40 }}>Prv Tag</Box>
+              <Box sx={{ width: 40 }}>Cur Tag</Box>
+              <Box sx={{ flex: 1 }}>Name</Box>
+            </Box>
+            {cards.map((cardUsers, i) => {
               return (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-evenly',
-                    alignItems: 'center',
-                  }}
-                  key={`score-${user.id}`}
-                >
-                  <CurrentTag tag={user.lastEventTag} />
-                  <Name
-                    sx={{
-                      flex: 1,
-                    }}
-                  >
-                    {user.firstname} {user.lastname}
-                  </Name>
-                  <Score
-                    sx={{
-                      width: 100,
-                    }}
-                    eventScore={eventScore}
-                  />
-                  <Button
-                    onClick={handleRemoveUserFromEvent.bind(null, user.id)}
-                    sx={{ ml: 1 }}
-                    variant="outlined"
-                  >
-                    {'Remove'}
-                  </Button>
+                <Box key={`cardUsers-${i}`}>
+                  <h2>{`Card ${i + 1}`}</h2>
+                  <Stack spacing={3}>
+                    {cardUsers.map((user) => {
+                      const { eventScore } = user
+
+                      return (
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            justifyContent: 'space-evenly',
+                            alignItems: 'center',
+                          }}
+                          key={`score-${user.id}`}
+                        >
+                          <LastCourseTag tag={user.lastEventTag} />
+                          <CurrentTag
+                            user={user}
+                            onCurrentTagChange={handleCurrentTagChange.bind(
+                              user
+                            )}
+                          />{' '}
+                          <Name
+                            sx={{
+                              flex: 1,
+                            }}
+                          >
+                            {user.firstname} {user.lastname}
+                          </Name>
+                          <Score
+                            sx={{
+                              width: 100,
+                            }}
+                            userId={user.id}
+                            eventScore={eventScore}
+                            handleUpdateScore={handleUpdateScore}
+                          />
+                          <Button
+                            onClick={handleRemoveUserFromEvent.bind(
+                              null,
+                              user.id
+                            )}
+                            sx={{ ml: 1 }}
+                            variant="outlined"
+                          >
+                            {'Remove'}
+                          </Button>
+                        </Box>
+                      )
+                    })}
+                  </Stack>
                 </Box>
               )
             })}
           </Stack>{' '}
         </Box>
       </main>
-      <Drawer
-        sx={{
-          width: 300,
-          flexShrink: 0,
-          [`& .MuiDrawer-paper`]: {
-            width: 300,
-            boxSizing: 'border-box',
-          },
-        }}
-        open={isAddNewUser}
-        onClose={() => {
-          setIsAddNewUser(false)
-        }}
-      >
-        <CreateNewUser
-          handleCreateNewUserSubmit={handleCreateNewUserSubmit}
-          eventId={event.id}
-        />
-      </Drawer>
     </Layout>
   )
 }

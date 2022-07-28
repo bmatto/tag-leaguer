@@ -31,7 +31,8 @@ const resolvers = {
 
       const newEvent = await prisma.event.create({
         data: {
-          ...input,
+          courseId: parseInt(input.courseId),
+          title: input.title,
           ...(date ? { date } : {}),
         },
       })
@@ -96,6 +97,84 @@ const resolvers = {
       })
 
       return Boolean(result)
+    },
+    updateScore: async (root, args) => {
+      const { input } = args
+
+      const { userId, eventId, date } = input
+      const strokes = parseInt(input.strokes)
+
+      const result = await prisma.score.upsert({
+        where: {
+          userId_eventId: {
+            userId: parseInt(userId),
+            eventId: parseInt(eventId),
+          },
+        },
+        create: {
+          date: new Date(parseInt(date)),
+          userId: parseInt(userId),
+          eventId: parseInt(eventId),
+          strokes,
+        },
+        update: {
+          strokes,
+        },
+      })
+
+      console.log(result)
+
+      return result
+    },
+    updateCurrentTag: async (root, args) => {
+      const { input } = args
+
+      const { courseId, userId, number, scoreId } = input
+
+      // Unassign Tag For Course/User
+      try {
+        await prisma.tag.update({
+          where: {
+            courseId_userId: {
+              courseId: parseInt(courseId),
+              userId: parseInt(userId),
+            },
+          },
+          data: {
+            userId: null,
+          },
+        })
+      } catch (e) {
+        console.log(e)
+      }
+
+      const scoreConnection = scoreId
+        ? {
+            Score: {
+              connect: {
+                id: parseInt(scoreId),
+              },
+            },
+          }
+        : {}
+
+      const tag = await prisma.tag.upsert({
+        where: {
+          number: parseInt(number),
+        },
+        create: {
+          userId: parseInt(userId),
+          courseId: parseInt(courseId),
+          number: parseInt(number),
+          ...scoreConnection,
+        },
+        update: {
+          userId: parseInt(userId),
+          ...scoreConnection,
+        },
+      })
+
+      return tag
     },
   },
   Query: {
@@ -221,7 +300,27 @@ const resolvers = {
     },
   },
   User: {
+    async currentCourseTag(parent) {
+      if (!parent.event) {
+        throw new Error('Cannot get currentCourseTag without event context')
+      }
+
+      const courseId = parent.event.courseId
+
+      const tag = prisma.tag.findFirst({
+        where: {
+          courseId: parseInt(courseId),
+          userId: parent.id,
+        },
+      })
+
+      return tag
+    },
     async lastEventTag(parent) {
+      // Last event tag is based on the last score for the current course
+      // We get the last score on this course for the user and find the
+      // associated tag.
+
       if (!parent.event) {
         throw new Error('Cannot get lastEventTag without event context')
       }

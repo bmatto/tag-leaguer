@@ -3,7 +3,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "migrate:prod": "dotenv -e .env.production -- npx prisma migrate deploy"
   },
   "dependencies": {
     "@apollo/client": "^3.6.9",
@@ -24,6 +25,7 @@
     "@types/node": "^18.0.1",
     "@types/react": "^18.0.14",
     "@typescript-eslint/eslint-plugin": "^5.30.5",
+    "dotenv-cli": "^6.0.0",
     "eslint": "^8.19.0",
     "eslint-config-next": "^12.2.0",
     "eslint-config-prettier": "^8.5.0",

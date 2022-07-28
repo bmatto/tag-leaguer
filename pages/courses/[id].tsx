@@ -5,6 +5,10 @@ import { gql, useMutation, useQuery } from '@apollo/client'
 import COURSE_QUERY from '../../graphql/queries/course.graphql'
 import { serverClient } from '../../graphql/client'
 import Layout from '../../components/Layout'
+import Stack from '@mui/material/Stack'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import TextField from '@mui/material/TextField'
 
 const NEW_EVENT_MUTATION = gql`
   mutation AddEvent($eventInput: EventInput!) {
@@ -90,26 +94,32 @@ function CreateNewEvent({ courseId, onSubmit, onCancel }) {
 
   return (
     <form onSubmit={handleSubmit} name="CreateNewEvent">
-      <label htmlFor="title">Title</label>
-      <input
-        required
-        onChange={handleChange}
-        type={'text'}
-        name="title"
-        value={newEvent.title}
-      />
-      <label htmlFor="date">Date</label>
-      <input
-        required
-        onChange={handleChange}
-        type={'datetime-local'}
-        name="date"
-        value={newEvent.date}
-      />
-      <button type="submit">Looks Good!</button>
-      <button type="button" onClick={onCancel}>
-        Nevermind
-      </button>
+      <Stack spacing={3}>
+        <TextField
+          fullWidth
+          required
+          label="Title"
+          onChange={handleChange}
+          type={'text'}
+          name="title"
+          value={newEvent.title}
+        />
+        <TextField
+          fullWidth
+          label="Date"
+          required
+          onChange={handleChange}
+          type={'datetime-local'}
+          name="date"
+          value={newEvent.date}
+        />
+        <Button variant="contained" type="submit">
+          Looks Good!
+        </Button>
+        <Button variant="outlined" type="button" onClick={onCancel}>
+          Nevermind
+        </Button>
+      </Stack>
     </form>
   )
 }
@@ -145,21 +155,29 @@ export default function Course({ course }) {
     <Layout>
       <main>
         <h1>{courseData.name}</h1>
-        <button onClick={createNewEvent}>{'Create New Event'}</button>
-        {isCreateNewEvent && (
+
+        {isCreateNewEvent ? (
           <CreateNewEvent
             onCancel={handleCancel}
             onSubmit={handleCreateNewEvent}
             courseId={courseData.id}
           />
+        ) : (
+          <Button variant="contained" onClick={createNewEvent}>
+            {'Create New Event'}
+          </Button>
         )}
-        {courseData.events.map((event) => {
-          return (
-            <Link key={`event-${event.id}`} href={`/events/${event.id}`}>
-              <a>{event.title}</a>
-            </Link>
-          )
-        })}{' '}
+        <Stack spacing={3}>
+          {courseData.events.map((event) => {
+            return (
+              <Box key={`event-${event.id}`}>
+                <Link href={`/events/${event.id}`}>
+                  <a>{event.title}</a>
+                </Link>
+              </Box>
+            )
+          })}{' '}
+        </Stack>
       </main>
     </Layout>
   )

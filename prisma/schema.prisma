@@ -23,6 +23,7 @@ model Score {
   eventId Int?
 
   tagId Int?
+
   @@unique([userId, eventId])
 }
 
@@ -67,10 +68,12 @@ model Course {
 
 model Tag {
   id       Int     @id @default(autoincrement())
-  number   Int
+  number   Int     @unique @default(autoincrement())
   Course   Course? @relation(fields: [courseId], references: [id])
   courseId Int?
   User     User?   @relation(fields: [userId], references: [id])
   userId   Int?
   Score    Score[]
+
+  @@unique([courseId, userId])
 }
