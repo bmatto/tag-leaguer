@@ -11,7 +11,7 @@ import { sort } from 'ramda'
 import EVENT_QUERY from '../../graphql/queries/event.graphql'
 // import { serverClient } from '../../graphql/client'
 import Layout from '../../components/Layout'
-import UsersAutocomplete from '../../components/UsersAutoComplete'
+import UsersAutocomplete from '../../components/UsersAutocomplete'
 
 function Name(props) {
   const { sx, ...other } = props
