@@ -3,9 +3,20 @@ import { ApolloServer } from 'apollo-server-micro'
 
 import typeDefs from '../../graphql/schema.graphql'
 
-const prisma: PrismaClient = global.prisma || new PrismaClient() // ts-ingnore
+// const prisma: PrismaClient = global.prisma || new PrismaClient()
 
-if (process.env.NODE_ENV !== 'production') global.prisma = prisma
+// if (process.env.NODE_ENV !== 'production') global.prisma = prisma
+
+let prisma: PrismaClient
+
+if (process.env.NODE_ENV === 'production') {
+  prisma = new PrismaClient()
+} else {
+  if (!global.prisma) {
+    global.prisma = new PrismaClient()
+  }
+  prisma = global.prisma
+}
 
 const resolvers = {
   Mutation: {
